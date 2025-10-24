@@ -6,6 +6,8 @@ import { CategorizedIdeas } from './components/CategorizedIdeas';
 import { RegisterDialog, UserData } from './components/RegisterDialog';
 import { Toaster } from './components/ui/sonner';
 import { toast } from 'sonner@2.0.3';
+import { searchIdeas, submitIdea, mockIdeas } from './services/algoliaService';
+import { isAlgoliaConfigured } from './algolia';
 
 export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -36,31 +38,52 @@ export default function App() {
     }
   };
 
-  const handleSearch = () => {
+  const handleSearch = async () => {
     if (!searchQuery.trim()) return;
     
-    // Simulate search - in a real app, this would call an API
-    const mockResults = [
-      "Leadership skills development",
-      "Technical certification programs",
-      "Mentorship opportunities",
-      "Cross-functional project experience"
-    ];
-    
-    // Filter results based on search query
-    const filteredResults = mockResults.filter(result => 
-      result.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-    
-    setSearchResults(filteredResults);
-    setHasSearched(true);
-    
-    if (filteredResults.length === 0) {
-      toast.info("No existing ideas found. You can submit this as a new idea!");
+    try {
+      let results = [];
+      
+      if (isAlgoliaConfigured()) {
+        // Use real Algolia search
+        const searchResult = await searchIdeas(searchQuery);
+        if (searchResult.success) {
+          results = searchResult.hits.map(hit => hit.title);
+        } else {
+          console.error('Algolia search error:', searchResult.error);
+          // Fallback to mock data
+          results = mockIdeas
+            .filter(idea => 
+              idea.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+              idea.description.toLowerCase().includes(searchQuery.toLowerCase())
+            )
+            .map(idea => idea.title);
+        }
+      } else {
+        // Use mock data for development
+        results = mockIdeas
+          .filter(idea => 
+            idea.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            idea.description.toLowerCase().includes(searchQuery.toLowerCase())
+          )
+          .map(idea => idea.title);
+      }
+      
+      setSearchResults(results);
+      setHasSearched(true);
+      
+      if (results.length === 0) {
+        toast.info("No existing ideas found. You can submit this as a new idea!");
+      } else {
+        toast.success(`Found ${results.length} idea${results.length === 1 ? '' : 's'}`);
+      }
+    } catch (error) {
+      console.error('Search error:', error);
+      toast.error('Search failed. Please try again.');
     }
   };
 
-  const handleSubmitIdea = () => {
+  const handleSubmitIdea = async () => {
     if (!searchQuery.trim()) return;
     
     if (!isLoggedIn) {
@@ -68,11 +91,37 @@ export default function App() {
       return;
     }
     
-    // Simulate idea submission
-    toast.success(`Idea submitted: "${searchQuery}"`);
-    setSearchQuery('');
-    setSearchResults([]);
-    setHasSearched(false);
+    try {
+      const ideaData = {
+        title: searchQuery,
+        description: `User submitted idea: ${searchQuery}`,
+        category: 'User Submitted',
+        tags: ['user-submitted'],
+        author: userData ? `${userData.name} ${userData.surname}` : 'Anonymous'
+      };
+      
+      if (isAlgoliaConfigured()) {
+        // Submit to real Algolia
+        const result = await submitIdea(ideaData);
+        if (result.success) {
+          toast.success(`Idea submitted: "${searchQuery}"`);
+        } else {
+          toast.error('Failed to submit idea. Please try again.');
+          console.error('Submission error:', result.error);
+        }
+      } else {
+        // Simulate submission for development
+        toast.success(`Idea submitted: "${searchQuery}" (Development Mode)`);
+      }
+      
+      // Reset form
+      setSearchQuery('');
+      setSearchResults([]);
+      setHasSearched(false);
+    } catch (error) {
+      console.error('Submit error:', error);
+      toast.error('Failed to submit idea. Please try again.');
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -170,14 +219,22 @@ export default function App() {
           {/* Search Results */}
           {hasSearched && searchResults.length > 0 && (
             <div className="mt-4 bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-              <h3 className="text-sm font-medium text-gray-700 mb-2">Found {searchResults.length} ideas:</h3>
-              <ul className="space-y-2">
+              <h3 className="text-sm font-medium text-gray-700 mb-3">Found {searchResults.length} idea{searchResults.length === 1 ? '' : 's'}:</h3>
+              <div className="space-y-3">
                 {searchResults.map((result, index) => (
-                  <li key={index} className="text-sm text-gray-600 p-2 bg-gray-50 rounded">
-                    {result}
-                  </li>
+                  <div key={index} className="p-3 bg-gray-50 rounded-lg border border-gray-100">
+                    <h4 className="text-sm font-medium text-gray-900 mb-1">{result}</h4>
+                    <div className="text-xs text-gray-500">
+                      {!isAlgoliaConfigured() && (
+                        <span className="inline-block bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs mr-2">
+                          Development Mode
+                        </span>
+                      )}
+                      Click to learn more
+                    </div>
+                  </div>
                 ))}
-              </ul>
+              </div>
             </div>
           )}
           
@@ -187,9 +244,14 @@ export default function App() {
               <p className="text-sm text-yellow-800 mb-2">
                 No existing ideas found for "{searchQuery}"
               </p>
-              <p className="text-xs text-yellow-700">
+              <p className="text-xs text-yellow-700 mb-2">
                 Click the green button to submit this as a new idea, or try a different search term.
               </p>
+              {!isAlgoliaConfigured() && (
+                <div className="text-xs text-yellow-600 bg-yellow-100 px-2 py-1 rounded">
+                  🔧 Development Mode: Using mock data. Configure Algolia for real-time search.
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -198,22 +260,6 @@ export default function App() {
         {/* Categorized Ideas Section */}
         <CategorizedIdeas />
 
-        {/* Marketing Content */}
-        <div className="text-center mt-20">
-          <p className="text-gray-700 max-w-2xl mx-auto leading-relaxed mb-6">
-            HR teams spend 57% of their time on manual tasks.
-            <br />
-            Get time back with fast, reliable support that
-            <br />
-            transforms HR from reactive to proactive.
-          </p>
-          <Button 
-            variant="outline" 
-            className="bg-indigo-100 hover:bg-indigo-200 text-indigo-700 border-indigo-200 rounded-full px-8"
-          >
-            Learn more
-          </Button>
-        </div>
         </div>
       </div>
     </>
