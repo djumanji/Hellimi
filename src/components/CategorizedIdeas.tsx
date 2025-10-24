@@ -152,7 +152,7 @@ export function CategorizedIdeas() {
               onClick={() => handleSectorClick(sector)}
               className={`px-4 py-2 rounded-full transition-all ${
                 selectedSector === sector
-                  ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+                  ? 'bg-amber-200 text-gray-900 hover:bg-amber-300 border-amber-300'
                   : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
               }`}
             >
