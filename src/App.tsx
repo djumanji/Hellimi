@@ -19,6 +19,8 @@ export default function App() {
   const [topSectors, setTopSectors] = useState<string[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [showSearchSheet, setShowSearchSheet] = useState(false);
+  const [searchCount, setSearchCount] = useState(0);
+  const [lastSearchTime, setLastSearchTime] = useState(0);
   const searchContainerRef = useRef<HTMLDivElement>(null);
 
   // Load top sectors on component mount
@@ -35,7 +37,7 @@ export default function App() {
     loadTopSectors();
   }, []);
 
-  // Real-time search as user types
+  // Real-time search as user types (minimum 5 characters)
   useEffect(() => {
     const performSearch = async () => {
       if (!searchQuery.trim()) {
@@ -43,6 +45,29 @@ export default function App() {
         setHasSearched(false);
         setShowSearchSheet(false);
         return;
+      }
+
+      // Only search if user has entered at least 5 characters
+      if (searchQuery.trim().length < 5) {
+        setSearchResults([]);
+        setHasSearched(false);
+        setShowSearchSheet(false);
+        return;
+      }
+
+      // Basic rate limiting: max 5 searches per minute
+      const now = Date.now();
+      const oneMinute = 60 * 1000;
+      
+      if (now - lastSearchTime < oneMinute && searchCount >= 5) {
+        console.log('Rate limit exceeded. Please wait before searching again.');
+        toast.error('Too many searches. Please wait a moment before searching again.');
+        return;
+      }
+
+      // Reset counter if more than a minute has passed
+      if (now - lastSearchTime >= oneMinute) {
+        setSearchCount(0);
       }
 
       setIsSearching(true);
@@ -55,17 +80,29 @@ export default function App() {
           setHasSearched(true);
           // Only show sheet if we have results or if search is complete with no results
           setShowSearchSheet(true);
+          
+          // Update rate limiting counters
+          setSearchCount(prev => prev + 1);
+          setLastSearchTime(now);
         } else {
           console.error('Search error:', searchResult.error);
           setSearchResults([]);
           setHasSearched(true);
           setShowSearchSheet(true);
+          
+          // Update rate limiting counters even on error
+          setSearchCount(prev => prev + 1);
+          setLastSearchTime(now);
         }
       } catch (error) {
         console.error('Search error:', error);
         setSearchResults([]);
         setHasSearched(true);
         setShowSearchSheet(true);
+        
+        // Update rate limiting counters even on error
+        setSearchCount(prev => prev + 1);
+        setLastSearchTime(now);
       } finally {
         setIsSearching(false);
       }
@@ -234,9 +271,6 @@ export default function App() {
 
         {/* Search and Submit Ideas */}
         <div className="relative mb-8" ref={searchContainerRef}>
-          <h2 className="text-lg font-medium text-gray-700 mb-3">
-            {hasSearched && searchResults.length === 0 ? 'Submit your Idea' : 'Search for Ideas'}
-          </h2>
           <div className={`flex items-center gap-4 bg-gray-50 shadow-sm border border-gray-200 px-6 py-4 focus-within:ring-2 focus-within:ring-indigo-500 focus-within:border-indigo-500 transition-all ${
             showSearchSheet ? 'rounded-t-2xl border-b-0' : 'rounded-full'
           }`}>
@@ -245,7 +279,7 @@ export default function App() {
               type="text"
               placeholder={hasSearched && searchResults.length === 0 
                 ? "Be nice. We don't accept racist or discriminatory suggestions."
-                : "Search for action items..."
+                : "Search for ideas..."
               }
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -284,6 +318,13 @@ export default function App() {
               )}
             </Button>
           </div>
+
+          {/* Character count helper */}
+          {searchQuery && searchQuery.length > 0 && searchQuery.length < 5 && (
+            <div className="mt-2 text-sm text-gray-500 text-center">
+              Type at least 5 characters to search
+            </div>
+          )}
 
           {/* Integrated Search Results - Seamless Extension */}
           {showSearchSheet && (
