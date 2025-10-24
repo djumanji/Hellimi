@@ -132,14 +132,15 @@ export function LiveIdeasStream({ isLoggedIn }: LiveIdeasStreamProps) {
     <div className="bg-white rounded-3xl shadow-sm border border-gray-200 p-8 min-h-[300px]">
       {/* Idea Entry Bar */}
       <div className="mb-6">
+        <h2 className="text-lg font-medium text-gray-700 mb-3">Submit your Idea</h2>
         <div className="flex items-center gap-4 bg-gray-50 rounded-full border border-gray-200 px-6 py-4">
           <Input
             type="text"
-            placeholder="     Be nice. We don't accept racist or discriminatory suggestions."
+            placeholder="Be nice. We don't accept racist or discriminatory suggestions."
             value={ideaInput}
             onChange={(e) => setIdeaInput(e.target.value)}
             onKeyPress={handleKeyPress}
-            className="border-0 shadow-none focus-visible:ring-0 px-0 bg-transparent"
+            className="border-0 shadow-none focus-visible:ring-0 px-3 bg-transparent"
           />
           <Button
             size="icon"

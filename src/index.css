@@ -1915,6 +1915,17 @@ html {
   font-size: var(--font-size);
 }
 
+/* Custom placeholder behavior for inputs */
+input:focus::placeholder {
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+input::placeholder {
+  opacity: 1;
+  transition: opacity 0.2s ease;
+}
+
 @property --tw-translate-x {
   syntax: "*";
   inherits: false;
