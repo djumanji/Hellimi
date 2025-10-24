@@ -196,13 +196,58 @@ export const getTopSectors = async () => {
   }
 };
 
+// Function to get all ideas (for default display)
+export const getAllIdeas = async () => {
+  // If Algolia is not configured, use mock data
+  if (!isSearchConfigured()) {
+    console.log('Algolia not configured, using mock data');
+    return { success: true, hits: mockIdeas };
+  }
+
+  try {
+    const searchIndex = await getSearchIndex();
+    if (!searchIndex) {
+      console.log('Failed to get search index, using mock data');
+      return { success: true, hits: mockIdeas };
+    }
+
+    const searchParams = {
+      query: '',
+      hitsPerPage: 10,
+      attributesToRetrieve: ['ID', 'Action Item', 'Sector', 'Lead/Key Stakeholders', 'Timeline'],
+      attributesToHighlight: ['Action Item', 'Sector']
+    };
+
+    const { hits } = await searchIndex.search(searchParams);
+    
+    // Transform the data to match our expected format
+    const transformedHits = hits.map(hit => ({
+      objectID: hit.objectID,
+      title: hit['Action Item'] || 'Untitled Action Item',
+      description: `Sector: ${hit.Sector || 'Unknown'} | Timeline: ${hit.Timeline || 'Unknown'} | Lead: ${hit['Lead/Key Stakeholders'] || 'Unknown'}`,
+      category: hit.Sector || 'General',
+      tags: [hit.Sector, hit.Timeline].filter(Boolean),
+      author: hit['Lead/Key Stakeholders'] || 'Unknown',
+      votes: Math.floor(Math.random() * 100) + 1, // Random votes for demo
+      created_at: new Date().toISOString(),
+      // Keep original data for reference
+      originalData: hit
+    }));
+    
+    return { success: true, hits: transformedHits };
+  } catch (error) {
+    console.error('Error getting all ideas:', error);
+    return { success: false, error: error.message, hits: mockIdeas };
+  }
+};
+
 // Function to search ideas by sector
 export const searchIdeasBySector = async (sector) => {
   // If Algolia is not configured, use mock data
   if (!isSearchConfigured()) {
     console.log('Algolia not configured, using mock search data by sector');
     const mockResults = mockIdeas.filter(idea => 
-      idea.category.toLowerCase() === sector.toLowerCase()
+      idea.category.toLowerCase().includes(sector.toLowerCase())
     );
     return { success: true, hits: mockResults };
   }
@@ -212,14 +257,14 @@ export const searchIdeasBySector = async (sector) => {
     if (!searchIndex) {
       console.log('Failed to get search index, using mock data');
       const mockResults = mockIdeas.filter(idea => 
-        idea.category.toLowerCase() === sector.toLowerCase()
+        idea.category.toLowerCase().includes(sector.toLowerCase())
       );
       return { success: true, hits: mockResults };
     }
 
+    // Try multiple search approaches for better matching
     const searchParams = {
-      query: '',
-      filters: `Sector:"${sector}"`,
+      query: sector, // Use sector as query for fuzzy matching
       hitsPerPage: 20,
       attributesToRetrieve: ['ID', 'Action Item', 'Sector', 'Lead/Key Stakeholders', 'Timeline'],
       attributesToHighlight: ['Action Item', 'Sector']
@@ -227,8 +272,15 @@ export const searchIdeasBySector = async (sector) => {
 
     const { hits } = await searchIndex.search(searchParams);
     
+    // Filter results to only include those that match the sector
+    const filteredHits = hits.filter(hit => {
+      const hitSector = hit.Sector || '';
+      return hitSector.toLowerCase().includes(sector.toLowerCase()) ||
+             sector.toLowerCase().includes(hitSector.toLowerCase());
+    });
+    
     // Transform the data to match our expected format
-    const transformedHits = hits.map(hit => ({
+    const transformedHits = filteredHits.map(hit => ({
       objectID: hit.objectID,
       title: hit['Action Item'] || 'Untitled Action Item',
       description: `Sector: ${hit.Sector || 'Unknown'} | Timeline: ${hit.Timeline || 'Unknown'} | Lead: ${hit['Lead/Key Stakeholders'] || 'Unknown'}`,

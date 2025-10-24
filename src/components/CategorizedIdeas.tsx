@@ -3,7 +3,7 @@ import { ThumbsUp } from 'lucide-react';
 import { Card } from './ui/card';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
-import { getTopSectors, searchIdeasBySector } from '../services/algoliaService';
+import { getTopSectors, searchIdeasBySector, getAllIdeas } from '../services/algoliaService';
 
 interface Idea {
   objectID: string;
@@ -19,26 +19,27 @@ interface Idea {
 export function CategorizedIdeas() {
   const [votedIdeas, setVotedIdeas] = useState<Set<string>>(new Set());
   const [sectors, setSectors] = useState<string[]>([]);
-  const [selectedSector, setSelectedSector] = useState<string>('');
+  const [selectedSector, setSelectedSector] = useState<string>('All');
   const [ideas, setIdeas] = useState<Idea[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // Load sectors on component mount
+  // Load sectors and initial ideas on component mount
   useEffect(() => {
-    const loadSectors = async () => {
+    const loadInitialData = async () => {
       try {
+        // Load sectors
         const sectorList = await getTopSectors();
-        setSectors(sectorList);
-        if (sectorList.length > 0) {
-          setSelectedSector(sectorList[0]);
-        }
+        setSectors(['All', ...sectorList]); // Add "All" option
+        
+        // Load all ideas by default
+        await loadIdeasForSector('All');
       } catch (error) {
-        console.error('Error loading sectors:', error);
-        setSectors(['Culture', 'Economy', 'Environment', 'Governance', 'Social Policy']);
-        setSelectedSector('Culture');
+        console.error('Error loading initial data:', error);
+        setSectors(['All', 'Culture', 'Economy', 'Environment', 'Governance', 'Social Policy']);
+        await loadIdeasForSector('All');
       }
     };
-    loadSectors();
+    loadInitialData();
   }, []);
 
   // Load ideas when sector changes
@@ -51,7 +52,13 @@ export function CategorizedIdeas() {
   const loadIdeasForSector = async (sector: string) => {
     setLoading(true);
     try {
-      const result = await searchIdeasBySector(sector);
+      let result;
+      if (sector === 'All') {
+        result = await getAllIdeas();
+      } else {
+        result = await searchIdeasBySector(sector);
+      }
+      
       if (result.success) {
         setIdeas(result.hits);
       } else {
