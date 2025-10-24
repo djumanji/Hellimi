@@ -4,8 +4,14 @@ import { algoliasearch } from 'algoliasearch';
 const ALGOLIA_APP_ID = 'Q6O1I7G6CA';
 const ALGOLIA_ADMIN_API_KEY = 'YOUR_ADMIN_API_KEY'; // You'll need to get this from Algolia dashboard
 
-// Check if Algolia is configured
-const isConfigured = () => {
+// Check if Algolia is configured for search (only needs App ID)
+const isSearchConfigured = () => {
+  return ALGOLIA_APP_ID !== 'YOUR_APP_ID' && 
+         ALGOLIA_APP_ID.length > 0;
+};
+
+// Check if Algolia is configured for admin operations (needs both App ID and Admin Key)
+const isAdminConfigured = () => {
   return ALGOLIA_APP_ID !== 'YOUR_APP_ID' && 
          ALGOLIA_ADMIN_API_KEY !== 'YOUR_ADMIN_API_KEY' &&
          ALGOLIA_APP_ID.length > 0 && 
@@ -16,18 +22,45 @@ const isConfigured = () => {
 let adminClient = null;
 let ideasIndex = null;
 
-if (isConfigured()) {
+if (isAdminConfigured()) {
   try {
     adminClient = algoliasearch(ALGOLIA_APP_ID, ALGOLIA_ADMIN_API_KEY);
     ideasIndex = adminClient.initIndex('ideas');
   } catch (error) {
-    console.warn('Failed to initialize Algolia client:', error);
+    console.warn('Failed to initialize Algolia admin client:', error);
   }
 }
 
+// Function to get search index (lazy initialization)
+const getSearchIndex = async () => {
+  if (ideasIndex) return ideasIndex;
+  
+  if (isSearchConfigured()) {
+    try {
+      const { searchClient } = await import('../algolia.js');
+      if (searchClient) {
+        // Create a mock index object that uses the search client
+        return {
+          search: async (params) => {
+            const { results } = await searchClient.search([{
+              indexName: 'ideas',
+              ...params
+            }]);
+            return results[0];
+          }
+        };
+      }
+    } catch (error) {
+      console.warn('Failed to initialize Algolia search client:', error);
+    }
+  }
+  
+  return null;
+};
+
 export const submitIdea = async (ideaData) => {
-  // If Algolia is not configured, simulate submission
-  if (!isConfigured() || !ideasIndex) {
+  // If Algolia admin is not configured, simulate submission
+  if (!isAdminConfigured() || !ideasIndex) {
     console.log('Algolia not configured, simulating idea submission');
     return { 
       success: true, 
@@ -71,7 +104,7 @@ export const submitIdea = async (ideaData) => {
 
 export const searchIdeas = async (query, filters = {}) => {
   // If Algolia is not configured, use mock data
-  if (!isConfigured() || !ideasIndex) {
+  if (!isSearchConfigured()) {
     console.log('Algolia not configured, using mock search data');
     const mockResults = mockIdeas.filter(idea => 
       idea.title.toLowerCase().includes(query.toLowerCase()) ||
@@ -81,16 +114,41 @@ export const searchIdeas = async (query, filters = {}) => {
   }
 
   try {
+    const searchIndex = await getSearchIndex();
+    if (!searchIndex) {
+      console.log('Failed to get search index, using mock data');
+      const mockResults = mockIdeas.filter(idea => 
+        idea.title.toLowerCase().includes(query.toLowerCase()) ||
+        idea.description.toLowerCase().includes(query.toLowerCase())
+      );
+      return { success: true, hits: mockResults };
+    }
+
     const searchParams = {
       query,
       hitsPerPage: 10,
-      attributesToRetrieve: ['title', 'description', 'category', 'tags', 'votes', 'created_at'],
-      attributesToHighlight: ['title', 'description'],
+      attributesToRetrieve: ['ID', 'Action Item', 'Sector', 'Lead/Key Stakeholders', 'Timeline'],
+      attributesToHighlight: ['Action Item', 'Sector'],
       ...filters
     };
 
-    const { hits } = await ideasIndex.search(searchParams);
-    return { success: true, hits };
+    const { hits } = await searchIndex.search(searchParams);
+    
+    // Transform the data to match our expected format
+    const transformedHits = hits.map(hit => ({
+      objectID: hit.objectID,
+      title: hit['Action Item'] || 'Untitled Action Item',
+      description: `Sector: ${hit.Sector || 'Unknown'} | Timeline: ${hit.Timeline || 'Unknown'} | Lead: ${hit['Lead/Key Stakeholders'] || 'Unknown'}`,
+      category: hit.Sector || 'General',
+      tags: [hit.Sector, hit.Timeline].filter(Boolean),
+      author: hit['Lead/Key Stakeholders'] || 'Unknown',
+      votes: 0,
+      created_at: new Date().toISOString(),
+      // Keep original data for reference
+      originalData: hit
+    }));
+    
+    return { success: true, hits: transformedHits };
   } catch (error) {
     console.error('Error searching ideas:', error);
     return { success: false, error: error.message, hits: [] };
