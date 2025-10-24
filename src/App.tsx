@@ -4,6 +4,7 @@ import { Button } from './components/ui/button';
 import { Input } from './components/ui/input';
 import { CategorizedIdeas } from './components/CategorizedIdeas';
 import { RegisterDialog, UserData } from './components/RegisterDialog';
+import { SearchSheet } from './components/SearchSheet';
 import { Toaster } from './components/ui/sonner';
 import { toast } from 'sonner@2.0.3';
 import { searchIdeas, submitIdea, getTopSectors } from './services/algoliaService';
@@ -18,7 +19,7 @@ export default function App() {
   const [userData, setUserData] = useState<UserData | null>(null);
   const [topSectors, setTopSectors] = useState<string[]>([]);
   const [isSearching, setIsSearching] = useState(false);
-  const [showResults, setShowResults] = useState(false);
+  const [showSearchSheet, setShowSearchSheet] = useState(false);
   const searchContainerRef = useRef<HTMLDivElement>(null);
 
   // Load top sectors on component mount
@@ -41,10 +42,11 @@ export default function App() {
       if (!searchQuery.trim()) {
         setSearchResults([]);
         setHasSearched(false);
-        setShowResults(false);
+        setShowSearchSheet(false);
         return;
       }
 
+      setShowSearchSheet(true);
       setIsSearching(true);
       try {
         const searchResult = await searchIdeas(searchQuery);
@@ -53,18 +55,15 @@ export default function App() {
           const results = searchResult.hits.map(hit => hit.title);
           setSearchResults(results);
           setHasSearched(true);
-          setShowResults(true);
         } else {
           console.error('Search error:', searchResult.error);
           setSearchResults([]);
           setHasSearched(true);
-          setShowResults(true);
         }
       } catch (error) {
         console.error('Search error:', error);
         setSearchResults([]);
         setHasSearched(true);
-        setShowResults(true);
       } finally {
         setIsSearching(false);
       }
@@ -75,11 +74,11 @@ export default function App() {
     return () => clearTimeout(timeoutId);
   }, [searchQuery]);
 
-  // Click outside to hide results
+  // Click outside to hide search sheet
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
-        setShowResults(false);
+        setShowSearchSheet(false);
       }
     };
 
@@ -111,20 +110,30 @@ export default function App() {
   };
 
   const handleSearch = () => {
-    // Search is now handled by useEffect, just show results
-    setShowResults(true);
+    // Search is now handled by useEffect, just show sheet
+    setShowSearchSheet(true);
+  };
+
+  const handleResultClick = (result: string) => {
+    setSearchQuery(result);
+    setShowSearchSheet(false);
+    // You can add additional logic here, like navigating to a detail page
   };
 
   const handleSectorClick = (sector: string) => {
     setSearchQuery(sector);
-    setShowResults(true);
+    setShowSearchSheet(false);
   };
 
   const clearSearch = () => {
     setSearchQuery('');
     setSearchResults([]);
     setHasSearched(false);
-    setShowResults(false);
+    setShowSearchSheet(false);
+  };
+
+  const closeSearchSheet = () => {
+    setShowSearchSheet(false);
   };
 
   const handleSubmitIdea = async () => {
@@ -269,48 +278,8 @@ export default function App() {
             </Button>
           </div>
 
-          {/* Top Sectors Tags */}
-          {topSectors.length > 0 && (
-            <div className="mt-3">
-              <p className="text-sm text-gray-600 mb-2">Popular sectors:</p>
-              <div className="flex flex-wrap gap-2">
-                {topSectors.map((sector) => (
-                  <button
-                    key={sector}
-                    onClick={() => handleSectorClick(sector)}
-                    className="px-3 py-1 text-xs bg-indigo-100 text-indigo-700 rounded-full hover:bg-indigo-200 transition-colors"
-                  >
-                    {sector}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-          
-          {/* Search Results */}
-          {showResults && hasSearched && searchResults.length > 0 && (
-            <div className="mt-4 bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-              <h3 className="text-sm font-medium text-gray-700 mb-3">Found {searchResults.length} idea{searchResults.length === 1 ? '' : 's'}:</h3>
-              <div className="space-y-3">
-                {searchResults.map((result, index) => (
-                  <div key={index} className="p-3 bg-gray-50 rounded-lg border border-gray-100">
-                    <h4 className="text-sm font-medium text-gray-900 mb-1">{result}</h4>
-                    <div className="text-xs text-gray-500">
-                      {!isAlgoliaConfigured() && (
-                        <span className="inline-block bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs mr-2">
-                          Development Mode
-                        </span>
-                      )}
-                      Click to learn more
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-          
           {/* No Results - Submit Option */}
-          {showResults && hasSearched && searchResults.length === 0 && (
+          {hasSearched && searchResults.length === 0 && searchQuery && !showSearchSheet && (
             <div className="mt-4 bg-yellow-50 rounded-lg border border-yellow-200 p-4">
               <p className="text-sm text-yellow-800 mb-2">
                 No existing ideas found for "{searchQuery}"
@@ -327,6 +296,18 @@ export default function App() {
           )}
         </div>
 
+
+        {/* Search Sheet */}
+        <SearchSheet
+          isVisible={showSearchSheet}
+          searchQuery={searchQuery}
+          searchResults={searchResults}
+          topSectors={topSectors}
+          isSearching={isSearching}
+          onResultClick={handleResultClick}
+          onSectorClick={handleSectorClick}
+          onClose={closeSearchSheet}
+        />
 
         {/* Categorized Ideas Section */}
         <CategorizedIdeas />
