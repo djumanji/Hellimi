@@ -237,7 +237,7 @@ export default function App() {
           <h2 className="text-lg font-medium text-gray-700 mb-3">
             {hasSearched && searchResults.length === 0 ? 'Submit your Idea' : 'Search for Ideas'}
           </h2>
-          <div className="flex items-center gap-4 bg-gray-50 rounded-full shadow-sm border border-gray-200 px-6 py-4">
+          <div className="flex items-center gap-4 bg-gray-50 rounded-full shadow-sm border border-gray-200 px-6 py-4 focus-within:ring-2 focus-within:ring-indigo-500 focus-within:border-indigo-500 transition-all">
             <Search className="w-6 h-6 text-indigo-400 flex-shrink-0" />
             <Input
               type="text"
@@ -284,7 +284,7 @@ export default function App() {
           {showSearchSheet && (
             <div className="mt-4 bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
               {/* Results Header */}
-              <div className="flex items-center gap-4 p-4 border-b border-gray-100 bg-gray-50">
+              <div className="flex items-center gap-4 p-4 border-b border-gray-100 bg-white">
                 <Search className="w-5 h-5 text-gray-400 flex-shrink-0" />
                 <div className="flex-1 text-gray-600 text-sm">
                   Showing results for: <span className="font-medium text-gray-900">"{searchQuery}"</span>
@@ -297,7 +297,7 @@ export default function App() {
               {/* Results Content */}
               <div className="max-h-80 overflow-y-auto">
                 {searchResults.length > 0 ? (
-                  <div className="p-2">
+                  <div className="p-4">
                     {searchResults.slice(0, 5).map((result, index) => (
                       <div
                         key={index}
@@ -323,13 +323,13 @@ export default function App() {
 
               {/* Popular Sectors */}
               {topSectors.length > 0 && (
-                <div className="border-t border-gray-100 p-4 bg-gray-50">
-                  <div className="text-sm text-gray-600 mb-3 font-medium">Popular sectors:</div>
+                <div className="border-t border-gray-100 p-6 bg-white">
+                  <div className="text-sm text-gray-600 mb-4 font-medium">Popular sectors:</div>
                   <div className="flex flex-wrap gap-2">
                     {topSectors.map((sector) => (
                       <button
                         key={sector}
-                        className="px-3 py-1 text-xs bg-indigo-100 text-indigo-700 rounded-full hover:bg-indigo-200 transition-colors"
+                        className="px-3 py-1.5 text-xs bg-indigo-100 text-indigo-700 rounded-full hover:bg-indigo-200 transition-colors"
                         onClick={() => handleSectorClick(sector)}
                       >
                         {sector}
