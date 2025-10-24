@@ -155,6 +155,47 @@ export const searchIdeas = async (query, filters = {}) => {
   }
 };
 
+// Function to get top sectors from Algolia data
+export const getTopSectors = async () => {
+  if (!isSearchConfigured()) {
+    // Return mock sectors for development
+    return ['Culture', 'Economy', 'Environment', 'Governance', 'Social Policy'];
+  }
+
+  try {
+    const searchIndex = await getSearchIndex();
+    if (!searchIndex) {
+      return ['Culture', 'Economy', 'Environment', 'Governance', 'Social Policy'];
+    }
+
+    // Get all records to analyze sectors
+    const { hits } = await searchIndex.search('', {
+      hitsPerPage: 1000, // Get all records
+      attributesToRetrieve: ['Sector']
+    });
+
+    // Count sector occurrences
+    const sectorCounts = {};
+    hits.forEach(hit => {
+      const sector = hit.Sector;
+      if (sector) {
+        sectorCounts[sector] = (sectorCounts[sector] || 0) + 1;
+      }
+    });
+
+    // Sort by count and get top 5
+    const topSectors = Object.entries(sectorCounts)
+      .sort(([,a], [,b]) => b - a)
+      .slice(0, 5)
+      .map(([sector]) => sector);
+
+    return topSectors.length > 0 ? topSectors : ['Culture', 'Economy', 'Environment', 'Governance', 'Social Policy'];
+  } catch (error) {
+    console.error('Error getting top sectors:', error);
+    return ['Culture', 'Economy', 'Environment', 'Governance', 'Social Policy'];
+  }
+};
+
 // Mock data for development/testing
 export const mockIdeas = [
   {

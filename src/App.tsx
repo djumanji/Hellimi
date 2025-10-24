@@ -1,12 +1,12 @@
-import { useState } from 'react';
-import { Search, ArrowRight, LogIn, LogOut, Send } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Search, ArrowRight, LogIn, LogOut, Send, X } from 'lucide-react';
 import { Button } from './components/ui/button';
 import { Input } from './components/ui/input';
 import { CategorizedIdeas } from './components/CategorizedIdeas';
 import { RegisterDialog, UserData } from './components/RegisterDialog';
 import { Toaster } from './components/ui/sonner';
 import { toast } from 'sonner@2.0.3';
-import { searchIdeas, submitIdea } from './services/algoliaService';
+import { searchIdeas, submitIdea, getTopSectors } from './services/algoliaService';
 import { isAlgoliaConfigured } from './algolia';
 
 export default function App() {
@@ -16,6 +16,78 @@ export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [registerDialogOpen, setRegisterDialogOpen] = useState(false);
   const [userData, setUserData] = useState<UserData | null>(null);
+  const [topSectors, setTopSectors] = useState<string[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [showResults, setShowResults] = useState(false);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
+
+  // Load top sectors on component mount
+  useEffect(() => {
+    const loadTopSectors = async () => {
+      try {
+        const sectors = await getTopSectors();
+        setTopSectors(sectors);
+      } catch (error) {
+        console.error('Error loading top sectors:', error);
+        setTopSectors(['Culture', 'Economy', 'Environment', 'Governance', 'Social Policy']);
+      }
+    };
+    loadTopSectors();
+  }, []);
+
+  // Real-time search as user types
+  useEffect(() => {
+    const performSearch = async () => {
+      if (!searchQuery.trim()) {
+        setSearchResults([]);
+        setHasSearched(false);
+        setShowResults(false);
+        return;
+      }
+
+      setIsSearching(true);
+      try {
+        const searchResult = await searchIdeas(searchQuery);
+        
+        if (searchResult.success) {
+          const results = searchResult.hits.map(hit => hit.title);
+          setSearchResults(results);
+          setHasSearched(true);
+          setShowResults(true);
+        } else {
+          console.error('Search error:', searchResult.error);
+          setSearchResults([]);
+          setHasSearched(true);
+          setShowResults(true);
+        }
+      } catch (error) {
+        console.error('Search error:', error);
+        setSearchResults([]);
+        setHasSearched(true);
+        setShowResults(true);
+      } finally {
+        setIsSearching(false);
+      }
+    };
+
+    // Debounce search to avoid too many API calls
+    const timeoutId = setTimeout(performSearch, 300);
+    return () => clearTimeout(timeoutId);
+  }, [searchQuery]);
+
+  // Click outside to hide results
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
+        setShowResults(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   const handleRegister = (data: UserData) => {
     setUserData(data);
@@ -38,31 +110,21 @@ export default function App() {
     }
   };
 
-  const handleSearch = async () => {
-    if (!searchQuery.trim()) return;
-    
-    try {
-      // The searchIdeas function now handles both Algolia and mock data automatically
-      const searchResult = await searchIdeas(searchQuery);
-      
-      if (searchResult.success) {
-        const results = searchResult.hits.map(hit => hit.title);
-        setSearchResults(results);
-        setHasSearched(true);
-        
-        if (results.length === 0) {
-          toast.info("No existing ideas found. You can submit this as a new idea!");
-        } else {
-          toast.success(`Found ${results.length} idea${results.length === 1 ? '' : 's'}`);
-        }
-      } else {
-        console.error('Search error:', searchResult.error);
-        toast.error('Search failed. Please try again.');
-      }
-    } catch (error) {
-      console.error('Search error:', error);
-      toast.error('Search failed. Please try again.');
-    }
+  const handleSearch = () => {
+    // Search is now handled by useEffect, just show results
+    setShowResults(true);
+  };
+
+  const handleSectorClick = (sector: string) => {
+    setSearchQuery(sector);
+    setShowResults(true);
+  };
+
+  const clearSearch = () => {
+    setSearchQuery('');
+    setSearchResults([]);
+    setHasSearched(false);
+    setShowResults(false);
   };
 
   const handleSubmitIdea = async () => {
@@ -160,7 +222,7 @@ export default function App() {
         </div>
 
         {/* Search and Submit Ideas */}
-        <div className="relative mb-8">
+        <div className="relative mb-8" ref={searchContainerRef}>
           <h2 className="text-lg font-medium text-gray-700 mb-3">
             {hasSearched && searchResults.length === 0 ? 'Submit your Idea' : 'Search for Ideas'}
           </h2>
@@ -170,13 +232,23 @@ export default function App() {
               type="text"
               placeholder={hasSearched && searchResults.length === 0 
                 ? "Be nice. We don't accept racist or discriminatory suggestions."
-                : "What skills do I need to get promoted?"
+                : "Search for action items..."
               }
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyPress={handleKeyPress}
               className="border-0 shadow-none focus-visible:ring-0 text-lg px-3 bg-transparent"
             />
+            {searchQuery && (
+              <Button
+                size="icon"
+                variant="ghost"
+                onClick={clearSearch}
+                className="rounded-full flex-shrink-0 text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            )}
             <Button 
               size="icon" 
               onClick={hasSearched && searchResults.length === 0 ? handleSubmitIdea : handleSearch}
@@ -185,17 +257,38 @@ export default function App() {
                   ? 'bg-green-500 hover:bg-green-600' 
                   : 'bg-indigo-500 hover:bg-indigo-600'
               }`}
+              disabled={isSearching}
             >
-              {hasSearched && searchResults.length === 0 ? (
+              {isSearching ? (
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : hasSearched && searchResults.length === 0 ? (
                 <Send className="w-5 h-5" />
               ) : (
                 <ArrowRight className="w-5 h-5" />
               )}
             </Button>
           </div>
+
+          {/* Top Sectors Tags */}
+          {topSectors.length > 0 && (
+            <div className="mt-3">
+              <p className="text-sm text-gray-600 mb-2">Popular sectors:</p>
+              <div className="flex flex-wrap gap-2">
+                {topSectors.map((sector) => (
+                  <button
+                    key={sector}
+                    onClick={() => handleSectorClick(sector)}
+                    className="px-3 py-1 text-xs bg-indigo-100 text-indigo-700 rounded-full hover:bg-indigo-200 transition-colors"
+                  >
+                    {sector}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           
           {/* Search Results */}
-          {hasSearched && searchResults.length > 0 && (
+          {showResults && hasSearched && searchResults.length > 0 && (
             <div className="mt-4 bg-white rounded-lg shadow-sm border border-gray-200 p-4">
               <h3 className="text-sm font-medium text-gray-700 mb-3">Found {searchResults.length} idea{searchResults.length === 1 ? '' : 's'}:</h3>
               <div className="space-y-3">
@@ -217,7 +310,7 @@ export default function App() {
           )}
           
           {/* No Results - Submit Option */}
-          {hasSearched && searchResults.length === 0 && (
+          {showResults && hasSearched && searchResults.length === 0 && (
             <div className="mt-4 bg-yellow-50 rounded-lg border border-yellow-200 p-4">
               <p className="text-sm text-yellow-800 mb-2">
                 No existing ideas found for "{searchQuery}"
