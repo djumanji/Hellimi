@@ -262,9 +262,10 @@ export const searchIdeasBySector = async (sector) => {
       return { success: true, hits: mockResults };
     }
 
-    // Try multiple search approaches for better matching
+    // Use filters for exact sector matching
     const searchParams = {
-      query: sector, // Use sector as query for fuzzy matching
+      query: '',
+      filters: `Sector:"${sector}"`,
       hitsPerPage: 20,
       attributesToRetrieve: ['ID', 'Action Item', 'Sector', 'Lead/Key Stakeholders', 'Timeline'],
       attributesToHighlight: ['Action Item', 'Sector']
@@ -272,12 +273,24 @@ export const searchIdeasBySector = async (sector) => {
 
     const { hits } = await searchIndex.search(searchParams);
     
-    // Filter results to only include those that match the sector
-    const filteredHits = hits.filter(hit => {
-      const hitSector = hit.Sector || '';
-      return hitSector.toLowerCase().includes(sector.toLowerCase()) ||
-             sector.toLowerCase().includes(hitSector.toLowerCase());
-    });
+    // If no exact matches, try fuzzy search as fallback
+    let filteredHits = hits;
+    if (hits.length === 0) {
+      console.log(`No exact matches for sector "${sector}", trying fuzzy search`);
+      const fuzzyParams = {
+        query: sector,
+        hitsPerPage: 20,
+        attributesToRetrieve: ['ID', 'Action Item', 'Sector', 'Lead/Key Stakeholders', 'Timeline'],
+        attributesToHighlight: ['Action Item', 'Sector']
+      };
+      
+      const { hits: fuzzyHits } = await searchIndex.search(fuzzyParams);
+      filteredHits = fuzzyHits.filter(hit => {
+        const hitSector = hit.Sector || '';
+        return hitSector.toLowerCase().includes(sector.toLowerCase()) ||
+               sector.toLowerCase().includes(hitSector.toLowerCase());
+      });
+    }
     
     // Transform the data to match our expected format
     const transformedHits = filteredHits.map(hit => ({
@@ -293,6 +306,7 @@ export const searchIdeasBySector = async (sector) => {
       originalData: hit
     }));
     
+    console.log(`Found ${transformedHits.length} ideas for sector "${sector}"`);
     return { success: true, hits: transformedHits };
   } catch (error) {
     console.error('Error searching ideas by sector:', error);

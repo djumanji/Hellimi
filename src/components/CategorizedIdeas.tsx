@@ -29,6 +29,7 @@ export function CategorizedIdeas() {
       try {
         // Load sectors
         const sectorList = await getTopSectors();
+        console.log('Loaded sectors:', sectorList);
         setSectors(['All', ...sectorList]); // Add "All" option
         
         // Load all ideas by default
@@ -61,13 +62,20 @@ export function CategorizedIdeas() {
       
       if (result.success) {
         setIdeas(result.hits);
+        console.log(`Loaded ${result.hits.length} ideas for sector: ${sector}`);
       } else {
         console.error('Error loading ideas:', result.error);
-        setIdeas([]);
+        // Don't clear ideas on error, keep current ones
+        if (ideas.length === 0) {
+          setIdeas([]);
+        }
       }
     } catch (error) {
       console.error('Error loading ideas:', error);
-      setIdeas([]);
+      // Don't clear ideas on error, keep current ones
+      if (ideas.length === 0) {
+        setIdeas([]);
+      }
     } finally {
       setLoading(false);
     }
@@ -186,7 +194,8 @@ export function CategorizedIdeas() {
           ))
         ) : (
           <div className="text-center py-8">
-            <p className="text-gray-500">No ideas found for this sector.</p>
+            <p className="text-gray-500 mb-4">No ideas found for sector "{selectedSector}".</p>
+            <p className="text-sm text-gray-400">Try selecting a different sector or "All" to see all ideas.</p>
           </div>
         )}
       </div>
