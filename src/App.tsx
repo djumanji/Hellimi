@@ -237,7 +237,9 @@ export default function App() {
           <h2 className="text-lg font-medium text-gray-700 mb-3">
             {hasSearched && searchResults.length === 0 ? 'Submit your Idea' : 'Search for Ideas'}
           </h2>
-          <div className="flex items-center gap-4 bg-gray-50 rounded-full shadow-sm border border-gray-200 px-6 py-4 focus-within:ring-2 focus-within:ring-indigo-500 focus-within:border-indigo-500 transition-all">
+          <div className={`flex items-center gap-4 bg-gray-50 shadow-sm border border-gray-200 px-6 py-4 focus-within:ring-2 focus-within:ring-indigo-500 focus-within:border-indigo-500 transition-all ${
+            showSearchSheet ? 'rounded-t-2xl border-b-0' : 'rounded-full'
+          }`}>
             <Search className="w-6 h-6 text-indigo-400 flex-shrink-0" />
             <Input
               type="text"
@@ -250,7 +252,7 @@ export default function App() {
               onKeyPress={handleKeyPress}
               className="border-0 shadow-none focus-visible:ring-0 text-lg px-3 bg-transparent"
             />
-            {searchQuery && (
+            {searchQuery && !isSearching && (
               <Button
                 size="icon"
                 variant="ghost"
@@ -259,6 +261,9 @@ export default function App() {
               >
                 <X className="w-4 h-4" />
               </Button>
+            )}
+            {isSearching && (
+              <div className="w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin flex-shrink-0" />
             )}
             <Button 
               size="icon" 
@@ -280,20 +285,9 @@ export default function App() {
             </Button>
           </div>
 
-          {/* Integrated Search Results */}
+          {/* Integrated Search Results - Seamless Extension */}
           {showSearchSheet && (
-            <div className="mt-4 bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
-              {/* Results Header */}
-              <div className="flex items-center gap-4 p-4 border-b border-gray-100 bg-white">
-                <Search className="w-5 h-5 text-gray-400 flex-shrink-0" />
-                <div className="flex-1 text-gray-600 text-sm">
-                  Showing results for: <span className="font-medium text-gray-900">"{searchQuery}"</span>
-                </div>
-                {isSearching && (
-                  <div className="w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-                )}
-              </div>
-
+            <div className="mt-0 bg-white rounded-b-2xl shadow-lg border border-gray-200 border-t-0 overflow-hidden">
               {/* Results Content */}
               <div className="max-h-80 overflow-y-auto">
                 {searchResults.length > 0 ? (
