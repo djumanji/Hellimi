@@ -1,12 +1,15 @@
 import { algoliasearch } from 'algoliasearch';
 
 // Replace with your actual Algolia credentials
-const ALGOLIA_APP_ID = 'YOUR_APP_ID';
-const ALGOLIA_ADMIN_API_KEY = 'YOUR_ADMIN_API_KEY';
+const ALGOLIA_APP_ID = 'Q6O1I7G6CA';
+const ALGOLIA_ADMIN_API_KEY = 'YOUR_ADMIN_API_KEY'; // You'll need to get this from Algolia dashboard
 
 // Check if Algolia is configured
 const isConfigured = () => {
-  return ALGOLIA_APP_ID !== 'YOUR_APP_ID' && ALGOLIA_ADMIN_API_KEY !== 'YOUR_ADMIN_API_KEY';
+  return ALGOLIA_APP_ID !== 'YOUR_APP_ID' && 
+         ALGOLIA_ADMIN_API_KEY !== 'YOUR_ADMIN_API_KEY' &&
+         ALGOLIA_APP_ID.length > 0 && 
+         ALGOLIA_ADMIN_API_KEY.length > 0;
 };
 
 // Initialize the admin client only if configured

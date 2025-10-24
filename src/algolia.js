@@ -2,8 +2,8 @@ import { liteClient as algoliasearch } from 'algoliasearch/lite';
 
 // Replace these with your actual Algolia credentials
 // You can get these from your Algolia dashboard
-const ALGOLIA_APP_ID = 'YOUR_APP_ID';
-const ALGOLIA_SEARCH_API_KEY = 'YOUR_SEARCH_API_KEY';
+const ALGOLIA_APP_ID = 'Q6O1I7G6CA';
+const ALGOLIA_SEARCH_API_KEY = 'b4c650a8e7db1a262075b0a5955173ea';
 
 // Check if Algolia is properly configured
 export const isAlgoliaConfigured = () => {
