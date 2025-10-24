@@ -1,12 +1,11 @@
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Search, ArrowRight, LogIn, LogOut, Send, X } from 'lucide-react';
 import { Button } from './components/ui/button';
 import { Input } from './components/ui/input';
 import { CategorizedIdeas } from './components/CategorizedIdeas';
 import { RegisterDialog, UserData } from './components/RegisterDialog';
-import { SearchSheet } from './components/SearchSheet';
 import { Toaster } from './components/ui/sonner';
-import { toast } from 'sonner@2.0.3';
+import { toast } from 'sonner';
 import { searchIdeas, submitIdea, getTopSectors } from './services/algoliaService';
 import { isAlgoliaConfigured } from './algolia';
 
@@ -138,9 +137,6 @@ export default function App() {
     setShowSearchSheet(false);
   };
 
-  const closeSearchSheet = () => {
-    setShowSearchSheet(false);
-  };
 
   const handleSubmitIdea = async () => {
     if (!searchQuery.trim()) return;
@@ -284,7 +280,68 @@ export default function App() {
             </Button>
           </div>
 
-          {/* No Results - Submit Option */}
+          {/* Integrated Search Results */}
+          {showSearchSheet && (
+            <div className="mt-4 bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
+              {/* Results Header */}
+              <div className="flex items-center gap-4 p-4 border-b border-gray-100 bg-gray-50">
+                <Search className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                <div className="flex-1 text-gray-600 text-sm">
+                  Showing results for: <span className="font-medium text-gray-900">"{searchQuery}"</span>
+                </div>
+                {isSearching && (
+                  <div className="w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                )}
+              </div>
+
+              {/* Results Content */}
+              <div className="max-h-80 overflow-y-auto">
+                {searchResults.length > 0 ? (
+                  <div className="p-2">
+                    {searchResults.slice(0, 5).map((result, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center gap-3 p-3 hover:bg-gray-50 rounded-lg cursor-pointer group"
+                        onClick={() => handleResultClick(result)}
+                      >
+                        <Search className="w-4 h-4 text-gray-400 group-hover:text-indigo-500 transition-colors" />
+                        <span className="text-gray-900 group-hover:text-indigo-600 transition-colors">
+                          {result}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : searchQuery && !isSearching ? (
+                  <div className="p-6 text-center">
+                    <div className="text-gray-500 mb-2">No results found for "{searchQuery}"</div>
+                    <div className="text-sm text-gray-400">
+                      Try a different search term or explore the popular sectors below
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+
+              {/* Popular Sectors */}
+              {topSectors.length > 0 && (
+                <div className="border-t border-gray-100 p-4 bg-gray-50">
+                  <div className="text-sm text-gray-600 mb-3 font-medium">Popular sectors:</div>
+                  <div className="flex flex-wrap gap-2">
+                    {topSectors.map((sector) => (
+                      <button
+                        key={sector}
+                        className="px-3 py-1 text-xs bg-indigo-100 text-indigo-700 rounded-full hover:bg-indigo-200 transition-colors"
+                        onClick={() => handleSectorClick(sector)}
+                      >
+                        {sector}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* No Results - Submit Option (when sheet is not shown) */}
           {hasSearched && searchResults.length === 0 && searchQuery && !showSearchSheet && (
             <div className="mt-4 bg-yellow-50 rounded-lg border border-yellow-200 p-4">
               <p className="text-sm text-yellow-800 mb-2">
@@ -303,17 +360,6 @@ export default function App() {
         </div>
 
 
-        {/* Search Sheet */}
-        <SearchSheet
-          isVisible={showSearchSheet}
-          searchQuery={searchQuery}
-          searchResults={searchResults}
-          topSectors={topSectors}
-          isSearching={isSearching}
-          onResultClick={handleResultClick}
-          onSectorClick={handleSectorClick}
-          onClose={closeSearchSheet}
-        />
 
         {/* Categorized Ideas Section */}
         <CategorizedIdeas />
