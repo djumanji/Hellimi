@@ -46,7 +46,6 @@ export default function App() {
         return;
       }
 
-      setShowSearchSheet(true);
       setIsSearching(true);
       try {
         const searchResult = await searchIdeas(searchQuery);
@@ -55,15 +54,19 @@ export default function App() {
           const results = searchResult.hits.map(hit => hit.title);
           setSearchResults(results);
           setHasSearched(true);
+          // Only show sheet if we have results or if search is complete with no results
+          setShowSearchSheet(true);
         } else {
           console.error('Search error:', searchResult.error);
           setSearchResults([]);
           setHasSearched(true);
+          setShowSearchSheet(true);
         }
       } catch (error) {
         console.error('Search error:', error);
         setSearchResults([]);
         setHasSearched(true);
+        setShowSearchSheet(true);
       } finally {
         setIsSearching(false);
       }
@@ -110,8 +113,11 @@ export default function App() {
   };
 
   const handleSearch = () => {
-    // Search is now handled by useEffect, just show sheet
-    setShowSearchSheet(true);
+    // Search is now handled by useEffect automatically
+    // Only show sheet if there's a search query
+    if (searchQuery.trim()) {
+      setShowSearchSheet(true);
+    }
   };
 
   const handleResultClick = (result: string) => {

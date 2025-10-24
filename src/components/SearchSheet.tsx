@@ -131,11 +131,11 @@ export const SearchSheet: React.FC<SearchSheetProps> = ({
         className="fixed top-20 left-1/2 transform -translate-x-1/2 w-full max-w-2xl mx-4 bg-white rounded-2xl shadow-2xl border border-gray-200 z-50"
         style={{ maxHeight: '70vh' }}
       >
-        {/* Search Bar */}
-        <div className="flex items-center gap-4 p-6 border-b border-gray-100">
+        {/* Search Bar - Display Only */}
+        <div className="flex items-center gap-4 p-6 border-b border-gray-100 bg-gray-50">
           <Search className="w-5 h-5 text-gray-400 flex-shrink-0" />
-          <div className="flex-1 text-gray-900 text-lg">
-            {searchQuery || 'Search for action items...'}
+          <div className="flex-1 text-gray-600 text-sm">
+            Showing results for: <span className="font-medium text-gray-900">"{searchQuery}"</span>
           </div>
           {isSearching && (
             <div className="w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
@@ -163,7 +163,7 @@ export const SearchSheet: React.FC<SearchSheetProps> = ({
             <div className="p-6 text-center">
               <div className="text-gray-500 mb-2">No results found for "{searchQuery}"</div>
               <div className="text-sm text-gray-400">
-                Try a different search term or check the popular sectors below
+                Try a different search term or explore the popular sectors below
               </div>
             </div>
           ) : null}
