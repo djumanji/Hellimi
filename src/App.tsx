@@ -77,9 +77,9 @@ export default function App() {
         {/* Header */}
         <div className="text-center mb-8">
           <a href="#" className="text-indigo-600 text-sm tracking-wide inline-block mb-4">
-            GO MORE WITH LATTICE AI
+            A space for democracy for Cypriots
           </a>
-          <h1 className="text-6xl mb-12">Lattice AI Agent</h1>
+          <h1 className="text-6xl mb-12">Hellimi</h1>
         </div>
 
         {/* Search Bar */}
