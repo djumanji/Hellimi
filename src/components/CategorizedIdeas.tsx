@@ -30,13 +30,21 @@ export function CategorizedIdeas() {
         // Load sectors
         const sectorList = await getTopSectors();
         console.log('Loaded sectors:', sectorList);
-        setSectors(['All', ...sectorList]); // Add "All" option
+        const allSectors = ['All', ...sectorList];
+        setSectors(allSectors);
+        
+        // Ensure selectedSector is set to 'All' if not already set
+        if (selectedSector === '') {
+          setSelectedSector('All');
+        }
         
         // Load all ideas by default
         await loadIdeasForSector('All');
       } catch (error) {
         console.error('Error loading initial data:', error);
-        setSectors(['All', 'Culture', 'Economy', 'Environment', 'Governance', 'Social Policy']);
+        const fallbackSectors = ['All', 'Culture', 'Economy', 'Environment', 'Governance', 'Social Policy'];
+        setSectors(fallbackSectors);
+        setSelectedSector('All');
         await loadIdeasForSector('All');
       }
     };
@@ -45,7 +53,8 @@ export function CategorizedIdeas() {
 
   // Load ideas when sector changes
   useEffect(() => {
-    if (selectedSector) {
+    if (selectedSector && selectedSector !== '') {
+      console.log('Loading ideas for sector:', selectedSector);
       loadIdeasForSector(selectedSector);
     }
   }, [selectedSector]);
@@ -69,12 +78,20 @@ export function CategorizedIdeas() {
         if (ideas.length === 0) {
           setIdeas([]);
         }
+        // Don't clear sectors on error
+        if (sectors.length === 0) {
+          setSectors(['All', 'Culture', 'Economy', 'Environment', 'Governance', 'Social Policy']);
+        }
       }
     } catch (error) {
       console.error('Error loading ideas:', error);
       // Don't clear ideas on error, keep current ones
       if (ideas.length === 0) {
         setIdeas([]);
+      }
+      // Don't clear sectors on error
+      if (sectors.length === 0) {
+        setSectors(['All', 'Culture', 'Economy', 'Environment', 'Governance', 'Social Policy']);
       }
     } finally {
       setLoading(false);
@@ -94,6 +111,9 @@ export function CategorizedIdeas() {
   };
 
   const handleSectorClick = (sector: string) => {
+    console.log('Sector clicked:', sector);
+    console.log('Current sectors:', sectors);
+    console.log('Current selectedSector:', selectedSector);
     setSelectedSector(sector);
   };
 
@@ -117,22 +137,31 @@ export function CategorizedIdeas() {
         </p>
       </div>
 
+      {/* Debug Info */}
+      <div className="text-center mb-4 text-sm text-gray-500">
+        Debug: {sectors.length} sectors loaded, selected: "{selectedSector}"
+      </div>
+
       {/* Sector Tags */}
       <div className="flex flex-wrap justify-center gap-3 mb-8">
-        {sectors.map((sector) => (
-          <Button
-            key={sector}
-            variant={selectedSector === sector ? "default" : "outline"}
-            onClick={() => handleSectorClick(sector)}
-            className={`px-4 py-2 rounded-full transition-all ${
-              selectedSector === sector
-                ? 'bg-indigo-600 text-white hover:bg-indigo-700'
-                : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-            }`}
-          >
-            {sector}
-          </Button>
-        ))}
+        {sectors.length > 0 ? (
+          sectors.map((sector) => (
+            <Button
+              key={sector}
+              variant={selectedSector === sector ? "default" : "outline"}
+              onClick={() => handleSectorClick(sector)}
+              className={`px-4 py-2 rounded-full transition-all ${
+                selectedSector === sector
+                  ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+                  : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+              }`}
+            >
+              {sector}
+            </Button>
+          ))
+        ) : (
+          <div className="text-gray-500">Loading sectors...</div>
+        )}
       </div>
 
       {/* Ideas List */}
