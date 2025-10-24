@@ -4,11 +4,46 @@ import { algoliasearch } from 'algoliasearch';
 const ALGOLIA_APP_ID = 'YOUR_APP_ID';
 const ALGOLIA_ADMIN_API_KEY = 'YOUR_ADMIN_API_KEY';
 
-// Initialize the admin client (only for server-side operations)
-const adminClient = algoliasearch(ALGOLIA_APP_ID, ALGOLIA_ADMIN_API_KEY);
-const ideasIndex = adminClient.initIndex('ideas');
+// Check if Algolia is configured
+const isConfigured = () => {
+  return ALGOLIA_APP_ID !== 'YOUR_APP_ID' && ALGOLIA_ADMIN_API_KEY !== 'YOUR_ADMIN_API_KEY';
+};
+
+// Initialize the admin client only if configured
+let adminClient = null;
+let ideasIndex = null;
+
+if (isConfigured()) {
+  try {
+    adminClient = algoliasearch(ALGOLIA_APP_ID, ALGOLIA_ADMIN_API_KEY);
+    ideasIndex = adminClient.initIndex('ideas');
+  } catch (error) {
+    console.warn('Failed to initialize Algolia client:', error);
+  }
+}
 
 export const submitIdea = async (ideaData) => {
+  // If Algolia is not configured, simulate submission
+  if (!isConfigured() || !ideasIndex) {
+    console.log('Algolia not configured, simulating idea submission');
+    return { 
+      success: true, 
+      result: { objectID: Date.now().toString() },
+      idea: {
+        objectID: Date.now().toString(),
+        title: ideaData.title || ideaData.query,
+        description: ideaData.description || '',
+        category: ideaData.category || 'General',
+        tags: ideaData.tags || [],
+        author: ideaData.author || 'Anonymous',
+        created_at: new Date().toISOString(),
+        votes: 0,
+        status: 'active',
+        ...ideaData
+      }
+    };
+  }
+
   try {
     const ideaObject = {
       objectID: Date.now().toString(),
@@ -32,6 +67,16 @@ export const submitIdea = async (ideaData) => {
 };
 
 export const searchIdeas = async (query, filters = {}) => {
+  // If Algolia is not configured, use mock data
+  if (!isConfigured() || !ideasIndex) {
+    console.log('Algolia not configured, using mock search data');
+    const mockResults = mockIdeas.filter(idea => 
+      idea.title.toLowerCase().includes(query.toLowerCase()) ||
+      idea.description.toLowerCase().includes(query.toLowerCase())
+    );
+    return { success: true, hits: mockResults };
+  }
+
   try {
     const searchParams = {
       query,

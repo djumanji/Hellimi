@@ -6,7 +6,7 @@ import { CategorizedIdeas } from './components/CategorizedIdeas';
 import { RegisterDialog, UserData } from './components/RegisterDialog';
 import { Toaster } from './components/ui/sonner';
 import { toast } from 'sonner@2.0.3';
-import { searchIdeas, submitIdea, mockIdeas } from './services/algoliaService';
+import { searchIdeas, submitIdea } from './services/algoliaService';
 import { isAlgoliaConfigured } from './algolia';
 
 export default function App() {
@@ -42,40 +42,22 @@ export default function App() {
     if (!searchQuery.trim()) return;
     
     try {
-      let results = [];
+      // The searchIdeas function now handles both Algolia and mock data automatically
+      const searchResult = await searchIdeas(searchQuery);
       
-      if (isAlgoliaConfigured()) {
-        // Use real Algolia search
-        const searchResult = await searchIdeas(searchQuery);
-        if (searchResult.success) {
-          results = searchResult.hits.map(hit => hit.title);
+      if (searchResult.success) {
+        const results = searchResult.hits.map(hit => hit.title);
+        setSearchResults(results);
+        setHasSearched(true);
+        
+        if (results.length === 0) {
+          toast.info("No existing ideas found. You can submit this as a new idea!");
         } else {
-          console.error('Algolia search error:', searchResult.error);
-          // Fallback to mock data
-          results = mockIdeas
-            .filter(idea => 
-              idea.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-              idea.description.toLowerCase().includes(searchQuery.toLowerCase())
-            )
-            .map(idea => idea.title);
+          toast.success(`Found ${results.length} idea${results.length === 1 ? '' : 's'}`);
         }
       } else {
-        // Use mock data for development
-        results = mockIdeas
-          .filter(idea => 
-            idea.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            idea.description.toLowerCase().includes(searchQuery.toLowerCase())
-          )
-          .map(idea => idea.title);
-      }
-      
-      setSearchResults(results);
-      setHasSearched(true);
-      
-      if (results.length === 0) {
-        toast.info("No existing ideas found. You can submit this as a new idea!");
-      } else {
-        toast.success(`Found ${results.length} idea${results.length === 1 ? '' : 's'}`);
+        console.error('Search error:', searchResult.error);
+        toast.error('Search failed. Please try again.');
       }
     } catch (error) {
       console.error('Search error:', error);
@@ -100,18 +82,14 @@ export default function App() {
         author: userData ? `${userData.name} ${userData.surname}` : 'Anonymous'
       };
       
-      if (isAlgoliaConfigured()) {
-        // Submit to real Algolia
-        const result = await submitIdea(ideaData);
-        if (result.success) {
-          toast.success(`Idea submitted: "${searchQuery}"`);
-        } else {
-          toast.error('Failed to submit idea. Please try again.');
-          console.error('Submission error:', result.error);
-        }
+      // The submitIdea function now handles both Algolia and mock data automatically
+      const result = await submitIdea(ideaData);
+      
+      if (result.success) {
+        toast.success(`Idea submitted: "${searchQuery}"`);
       } else {
-        // Simulate submission for development
-        toast.success(`Idea submitted: "${searchQuery}" (Development Mode)`);
+        toast.error('Failed to submit idea. Please try again.');
+        console.error('Submission error:', result.error);
       }
       
       // Reset form
