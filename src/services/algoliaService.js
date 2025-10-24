@@ -196,6 +196,58 @@ export const getTopSectors = async () => {
   }
 };
 
+// Function to search ideas by sector
+export const searchIdeasBySector = async (sector) => {
+  // If Algolia is not configured, use mock data
+  if (!isSearchConfigured()) {
+    console.log('Algolia not configured, using mock search data by sector');
+    const mockResults = mockIdeas.filter(idea => 
+      idea.category.toLowerCase() === sector.toLowerCase()
+    );
+    return { success: true, hits: mockResults };
+  }
+
+  try {
+    const searchIndex = await getSearchIndex();
+    if (!searchIndex) {
+      console.log('Failed to get search index, using mock data');
+      const mockResults = mockIdeas.filter(idea => 
+        idea.category.toLowerCase() === sector.toLowerCase()
+      );
+      return { success: true, hits: mockResults };
+    }
+
+    const searchParams = {
+      query: '',
+      filters: `Sector:"${sector}"`,
+      hitsPerPage: 20,
+      attributesToRetrieve: ['ID', 'Action Item', 'Sector', 'Lead/Key Stakeholders', 'Timeline'],
+      attributesToHighlight: ['Action Item', 'Sector']
+    };
+
+    const { hits } = await searchIndex.search(searchParams);
+    
+    // Transform the data to match our expected format
+    const transformedHits = hits.map(hit => ({
+      objectID: hit.objectID,
+      title: hit['Action Item'] || 'Untitled Action Item',
+      description: `Sector: ${hit.Sector || 'Unknown'} | Timeline: ${hit.Timeline || 'Unknown'} | Lead: ${hit['Lead/Key Stakeholders'] || 'Unknown'}`,
+      category: hit.Sector || 'General',
+      tags: [hit.Sector, hit.Timeline].filter(Boolean),
+      author: hit['Lead/Key Stakeholders'] || 'Unknown',
+      votes: Math.floor(Math.random() * 100) + 1, // Random votes for demo
+      created_at: new Date().toISOString(),
+      // Keep original data for reference
+      originalData: hit
+    }));
+    
+    return { success: true, hits: transformedHits };
+  } catch (error) {
+    console.error('Error searching ideas by sector:', error);
+    return { success: false, error: error.message, hits: [] };
+  }
+};
+
 // Mock data for development/testing
 export const mockIdeas = [
   {
