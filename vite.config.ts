@@ -3,9 +3,10 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 
-  export default defineConfig({
-    plugins: [react()],
-    resolve: {
+export default defineConfig({
+  plugins: [react()],
+  base: '/Hellimi/',
+  resolve: {
       extensions: ['.js', '.jsx', '.ts', '.tsx', '.json'],
       alias: {
         'vaul@1.1.2': 'vaul',
